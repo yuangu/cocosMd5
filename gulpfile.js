@@ -119,13 +119,54 @@ gulp.task("setting", function(cb){
 
     var window = {}
     var settingCode = fs.readFileSync('./build/web-mobile_dist/src/settings.js', 'utf8');   
-    var setting = eval(settingCode)
+    eval(settingCode)
     
-    var packedAssets = window._CCSettings.packedAssets;
+    var rawAssets = window._CCSettings.rawAssets.assets
+    window._CCSettings.rawAssets.assets = {}
+    window._CCSettings.md5AssetsMap["raw-assets"] = []
+
+    for(tmp in rawAssets)
+    {
+       
+        var uuid = decodeUuid(tmp);
+        if(uuid === tmp)
+        {
+            window._CCSettings.rawAssets.assets[uuid] = rawAssets[tmp]
+
+            let true_uuid = decodeUuid(window._CCSettings.uuids[ parseInt(uuid)  ])
+            if( rev_manifest_map.hasOwnProperty(true_uuid)  )
+            {
+                var oldName = rev_manifest_map[true_uuid];
+                var newName = rev_manifest[oldName];
+                
+                //会不会有没有后缀名的文件啊？
+                var oldFileName = oldName.substr(0, oldName.lastIndexOf(".")) 
+                var newFileName = newName.substr(0, newName.lastIndexOf("."))  
+               
+                var md5Str = newFileName.substr(oldFileName.length + 1, newFileName.length - oldFileName.length )
+                
+                
+                window._CCSettings.md5AssetsMap["raw-assets"].push(parseInt(uuid))
+                window._CCSettings.md5AssetsMap["raw-assets"].push(md5Str) 
+            }
+
+        }else{           
+            window._CCSettings.uuids.push(tmp)
+            window._CCSettings.rawAssets.assets[window._CCSettings.uuids.length - 1] = rawAssets[tmp]
+        }
+      
+
+        
+    }
+
+
+
+    //旧的packedAssets
+    var packedAssets = window._CCSettings['packedAssets'];
     window._CCSettings.packedAssets = {};
     
     window._CCSettings.md5AssetsMap.import = []
-    window._CCSettings.md5AssetsMap["raw-assets"] = []
+ 
     for(key in packedAssets)
     {
        var assertList =  packedAssets[key];
@@ -162,6 +203,10 @@ gulp.task("setting", function(cb){
         window._CCSettings.packedAssets[key] = tmp;
       
     }
+
+   
+
+
     // console.log( window._CCSettings)
     var outStr =  "window._CCSettings = JSON.parse('" + JSON.stringify( window._CCSettings) + "')"  + '; (function(e) { var t = e.uuids,i = e.md5AssetsMap;for (var s in i) for (var r = i[s], n = 0; n < r.length; n += 2)"number" == typeof r[n] && (r[n] = t[r[n]])})(window._CCSettings);'
     fs.writeFileSync  ('./build/web-mobile_dist/src/settings.js', outStr,'utf8');
