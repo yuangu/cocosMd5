@@ -61,6 +61,15 @@ gulp.task('copy', function(cb) {
     .on('end', cb));
 });
 
+//对main.js进行特殊处理
+gulp.task("salt", function(cb){
+    var data = fs.readFileSync('./build/web-mobile_dist/main.js', 'utf8');
+    var salt = (new Date()).valueOf().toString();
+    var newData =   data + "//salt" + salt + "\n"; 
+    fs.writeFileSync('./build/web-mobile_dist/main.js', newData)
+    cb();
+});
+
 //资源md5
 gulp.task('md5_res',function(cb){
     gulp.src('./build/web-mobile_dist/res/raw-assets/*/*.*') .pipe(rev())
@@ -245,11 +254,14 @@ gulp.task("rm_unuser" ,function(cb){
         fs.unlinkSync('./build/web-mobile_dist/' + key);
     }
     fs.unlinkSync('./build/web-mobile_dist/rev-manifest.json');
-    cb();
+     //清除文件的时候，如果遇到比较大的话，可能还没有删除完就已经进入了下一步
+     setTimeout(function() {
+        cb();        
+    }, 500)   
 });
 
 gulp.task('default', function(cb) {
     // 将你的默认的任务代码放在这
-    gulpSequence('clean', 'copy','md5_res','setting','md5_src', "rep","rm_unuser", 'htmlmin','jsmin',  'cssmin'  ,cb)
+    gulpSequence('clean', 'copy',"salt",'md5_res','setting','md5_src', "rep","rm_unuser", 'htmlmin','jsmin',  'cssmin'  ,cb)
 
 });
